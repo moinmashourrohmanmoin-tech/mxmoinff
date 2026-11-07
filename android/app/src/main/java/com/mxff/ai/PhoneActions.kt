@@ -18,7 +18,41 @@ import android.view.KeyEvent
 import org.json.JSONObject
 
 /** Every phone action MXFF can run. Used by the web bridge (NativeBridge) and the floating shadow (OverlayService). */
+
 object PhoneActions {
+    val KNOWN_APPS = mapOf(
+        "youtube" to listOf("com.google.android.youtube"),
+        "whatsapp" to listOf("com.whatsapp"),
+        "facebook" to listOf("com.facebook.katana"),
+        "messenger" to listOf("com.facebook.orca"),
+        "chrome" to listOf("com.android.chrome"),
+        "gmail" to listOf("com.google.android.gm"),
+        "maps" to listOf("com.google.android.apps.maps"),
+        "tiktok" to listOf("com.zhiliaoapp.musically")
+    )
+
+    fun findPackage(ctx: Context, name: String): String? {
+        val key = name.trim().lowercase()
+        val pm = ctx.packageManager
+
+        for (pkg in KNOWN_APPS[key].orEmpty()) {
+            try {
+                pm.getApplicationInfo(pkg, 0)
+                return pkg
+            } catch (_: Exception) {}
+        }
+
+        return try {
+            pm.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+            ).firstOrNull {
+                it.loadLabel(pm).toString().contains(name, ignoreCase = true)
+            }?.activityInfo?.packageName
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun res(ok: Boolean, msg: String) = JSONObject().put("ok", ok).put("message", msg)
     private fun ok(m: String) = res(true, m)
     private fun fail(m: String) = res(false, m)
