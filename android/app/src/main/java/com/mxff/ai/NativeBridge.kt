@@ -68,10 +68,37 @@ class NativeBridge(private val act: MainActivity) {
             act.getSharedPreferences("mxff", android.content.Context.MODE_PRIVATE).edit()
                 .putString("lang", o.optString("language", "bn"))
                 .putBoolean("voiceReply", o.optBoolean("voiceReply", true))
+                .putBoolean("screenVision", o.optBoolean("screenVision", true))
                 .putString("memory", (o.optJSONArray("memory") ?: JSONArray()).toString())
                 .apply()
         } catch (e: Exception) { /* ignore malformed */ }
     }
+
+    /** Ask Gemini directly from the phone (no server). Answer comes back as event {type:"ask_result", id, ok, text}. */
+    @JavascriptInterface
+    fun ask(id: String, json: String) {
+        Thread {
+            val r = try {
+                val o = JSONObject(json)
+                val ms = o.getJSONArray("messages")
+                val msgs = ArrayList<Pair<String, String>>()
+                for (i in 0 until ms.length()) { val m = ms.getJSONObject(i); msgs.add(m.optString("role") to m.optString("content")) }
+                val mem = ArrayList<String>()
+                o.optJSONArray("memory")?.let { for (i in 0 until it.length()) mem.add(it.optString(i)) }
+                Brain.chat(act, msgs, o.optString("language", "bn"), mem, voice = false)
+            } catch (e: Exception) { Brain.Result(false, "Bad request") }
+            emit("ask_result", "id" to id, "ok" to r.ok, "text" to r.text)
+        }.start()
+    }
+
+    /** Gemini API key lives only in this app's private storage. */
+    @JavascriptInterface
+    fun setApiKey(key: String) {
+        act.getSharedPreferences("mxff", android.content.Context.MODE_PRIVATE).edit().putString("geminiKey", key.trim()).apply()
+        emit("status")
+    }
+
+    @JavascriptInterface fun hasApiKey(): Boolean = Brain.key(act).isNotEmpty()
 
     @JavascriptInterface
     fun getStatus(): String {
@@ -83,6 +110,8 @@ class NativeBridge(private val act: MainActivity) {
             .put("callPermission", has(Manifest.permission.CALL_PHONE))
             .put("notificationAccess", listeners.contains(ComponentName(act, NotifListener::class.java).flattenToString()))
             .put("postNotifications", Build.VERSION.SDK_INT < 33 || has(Manifest.permission.POST_NOTIFICATIONS))
+            .put("accessibilityOn", MxffAccessibilityService.ready)
+            .put("hasKey", Brain.key(act).isNotEmpty())
             .put("overlayOn", OverlayService.running)
             .put("wakeOn", wakeOn)
             .put("androidVersion", Build.VERSION.SDK_INT).toString()
@@ -163,6 +192,9 @@ class NativeBridge(private val act: MainActivity) {
                 "post_notifications" -> if (Build.VERSION.SDK_INT >= 33) act.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4)
                 "overlay" -> act.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${act.packageName}")))
                 "notification_access" -> act.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                "accessibility" -> act.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                // Android 13+ blocks Accessibility for apps installed from an APK file until this is allowed once.
+                "app_info" -> act.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${act.packageName}")))
             }
         }
     }
@@ -173,6 +205,7 @@ class NativeBridge(private val act: MainActivity) {
     fun emergencyStop() {
         stopped = true; wakeOn = false
         stopListening(); tts?.stop()
+        OverlayService.cancelAgent()
         act.stopService(Intent(act, OverlayService::class.java))
         emit("action_result", "ok" to true, "message" to "Emergency stop: all automation halted")
     }

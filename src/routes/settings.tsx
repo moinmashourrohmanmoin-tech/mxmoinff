@@ -5,7 +5,7 @@ import { AppNav } from "@/components/AppNav";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useSettings, type Settings } from "@/lib/store";
-import { native, type NativeStatus } from "@/lib/native";
+import { native, syncNativeState, type NativeStatus } from "@/lib/native";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -104,6 +104,7 @@ function SettingsPage() {
 
       <section className="glass mt-4 divide-y rounded-xl px-4">
         <Row title="Long-term memory" desc="Use saved facts in answers."><Switch checked={s.memoryEnabled} onCheckedChange={(v) => set({ memoryEnabled: v })} /></Row>
+        <Row title="Let AI see screenshots during phone tasks" desc="Helps with videos and pictures. Off = only the screen's text is sent. Nothing is sent when no task is running."><Switch checked={s.screenVision} onCheckedChange={(v) => { set({ screenVision: v }); setTimeout(syncNativeState, 50); }} /></Row>
         <Row title="Save conversation history" desc="Stored only on this device."><Switch checked={s.saveHistory} onCheckedChange={(v) => set({ saveHistory: v })} /></Row>
       </section>
 
@@ -114,6 +115,8 @@ function SettingsPage() {
         {perm("Notifications", st?.postNotifications, "notifications", "Foreground service notice (Android 13+).")}
         {perm("Send SMS", st?.smsPermission, "sms", "Only after you confirm a message.")}
         {perm("Phone calls", st?.callPermission, "call", "Only after you confirm a call.")}
+        {perm("Phone control (Accessibility)", st?.accessibilityOn, "accessibility", "Lets MXFF see the screen and tap, type and scroll in other apps (TikTok, WhatsApp, Play Store …). It asks before sending a message, installing an app or paying. On Android 13+: if the switch is greyed out, open App info → ⋮ → “Allow restricted settings” first.")}
+        {!st?.accessibilityOn && <Row title="App info" desc="Needed once on Android 13+ for apps installed from an APK."><Button size="sm" variant="outline" onClick={() => native.bridge()?.requestPermission("app_info")} disabled={!st}>Open</Button></Row>}
         {perm("Notification access", st?.notificationAccess, "notification_access", "Read notifications when you ask.")}
       </section>
       <AppNav />

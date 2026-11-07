@@ -52,19 +52,51 @@ object PhoneActions {
             "alarm" -> alarm(ctx, a)
             "timer" -> timer(ctx, a)
             "media" -> media(ctx, a.optString("command"))
+            "agent" -> startAgent(a.optString("goal"))
             else -> fail("Unknown action")
         }
     }
 
-    private fun openApp(ctx: Context, name: String): JSONObject {
+    /** Well-known apps (English + Bengali names) -> package candidates (first installed one wins). */
+    val KNOWN_APPS: Map<String, List<String>> = mapOf(
+        "youtube" to listOf("com.google.android.youtube"), "ইউটিউব" to listOf("com.google.android.youtube"),
+        "whatsapp" to listOf("com.whatsapp"), "হোয়াটসঅ্যাপ" to listOf("com.whatsapp"),
+        "facebook" to listOf("com.facebook.katana"), "ফেসবুক" to listOf("com.facebook.katana"),
+        "messenger" to listOf("com.facebook.orca"), "মেসেঞ্জার" to listOf("com.facebook.orca"),
+        "instagram" to listOf("com.instagram.android"), "ইনস্টাগ্রাম" to listOf("com.instagram.android"),
+        "tiktok" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"), "tik tok" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"),
+        "টিকটক" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"), "টিক টক" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"),
+        "telegram" to listOf("org.telegram.messenger"), "টেলিগ্রাম" to listOf("org.telegram.messenger"),
+        "snapchat" to listOf("com.snapchat.android"), "x" to listOf("com.twitter.android"), "twitter" to listOf("com.twitter.android"),
+        "imo" to listOf("com.imo.android.imoim"), "ইমো" to listOf("com.imo.android.imoim"),
+        "spotify" to listOf("com.spotify.music"), "netflix" to listOf("com.netflix.mediaclient"),
+        "chrome" to listOf("com.android.chrome"), "gmail" to listOf("com.google.android.gm"),
+        "maps" to listOf("com.google.android.apps.maps"), "play store" to listOf("com.android.vending"), "প্লে স্টোর" to listOf("com.android.vending"),
+    )
+
+    /** Package of an installed app by name, or null if it is not installed. */
+    fun findPackage(ctx: Context, name: String): String? {
         val pm = ctx.packageManager
-        val known = mapOf("youtube" to "com.google.android.youtube", "whatsapp" to "com.whatsapp", "facebook" to "com.facebook.katana",
-            "messenger" to "com.facebook.orca", "chrome" to "com.android.chrome", "gmail" to "com.google.android.gm", "maps" to "com.google.android.apps.maps")
         val n = name.trim().lowercase()
-        val pkg = known[n] ?: pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+        if (n.isEmpty()) return null
+        KNOWN_APPS[n]?.firstOrNull { pm.getLaunchIntentForPackage(it) != null }?.let { return it }
+        return pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
             .firstOrNull { it.loadLabel(pm).toString().lowercase().contains(n) }?.activityInfo?.packageName
-        val i = pkg?.let { pm.getLaunchIntentForPackage(it) } ?: return fail("App not found: $name")
+    }
+
+    private fun openApp(ctx: Context, name: String): JSONObject {
+        val pkg = findPackage(ctx, name)
+        val i = pkg?.let { ctx.packageManager.getLaunchIntentForPackage(it) }
+            ?: return res(false, "App not found: $name").put("code", "not_installed")
         return start(ctx, i, "Opened $name")
+    }
+
+    /** "Operate other apps for me" (TikTok, WhatsApp, Play Store ...): handled by the floating assistant + accessibility service. */
+    private fun startAgent(goal: String): JSONObject = when {
+        goal.isBlank() -> fail("No task given")
+        !OverlayService.running -> fail("Turn on the Floating Assistant first (Settings)")
+        !MxffAccessibilityService.ready -> fail("Turn on MXFF in Android Settings → Accessibility first")
+        else -> { OverlayService.runAgent(goal, fromApp = true); ok("Working on it") }
     }
 
     private fun sendSms(ctx: Context, a: JSONObject): JSONObject {

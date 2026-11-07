@@ -26,10 +26,10 @@ class MainActivity : Activity() {
         web.settings.mediaPlaybackRequiresUserGesture = false
         bridge = NativeBridge(this)
         web.addJavascriptInterface(bridge, "MXFFNative")
+        web.settings.allowFileAccess = true
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest): Boolean {
-                val host = android.net.Uri.parse(BuildConfig.WEB_URL).host
-                if (r.url.host == host) return false
+                if (r.url.scheme == "file") return false
                 bridge.openUri(r.url.toString()); return true
             }
         }
@@ -37,7 +37,7 @@ class MainActivity : Activity() {
             override fun onPermissionRequest(request: PermissionRequest) { request.grant(request.resources) }
         }
         setContentView(web)
-        if (savedInstanceState == null) web.loadUrl(BuildConfig.WEB_URL) else web.restoreState(savedInstanceState)
+        if (savedInstanceState == null) web.loadUrl("file:///android_asset/www/index.html") else web.restoreState(savedInstanceState)
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
     }

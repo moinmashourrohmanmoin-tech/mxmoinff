@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#03070d">
+<title>MXFF AI</title>
+<style>
+:root{--bg:#03070d;--panel:#0a141f;--panel2:#0e1c2b;--line:#16324a;--cy:#35e6ff;--cy2:#12a8c4;--tx:#e6f6ff;--mut:#7f9db3;--red:#ff5a6a;--ok:#46e3a0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Noto Sans Bengali","Noto Sans",sans-serif;font-size:15px}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 4px}
+header h1{margin:0;font-size:17px;letter-spacing:.25em;color:var(--cy);font-weight:700}
+.ibtn{background:none;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:6px 10px;font-size:13px}
+.ibtn.red{color:var(--red);border-color:#5b2530}
+main{flex:1;overflow-y:auto;padding:0 14px 12px}
+.page{display:none}.page.on{display:block}
+#orbwrap{display:flex;flex-direction:column;align-items:center;padding:6px 0 10px}
+.orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#c8fbff 0,var(--cy) 18%,#0c6f86 48%,#04202b 72%,transparent 74%);box-shadow:0 0 38px #35e6ff55,inset 0 0 30px #35e6ff33;animation:br 3.2s ease-in-out infinite;transition:all .3s}
+.orb.listening{animation:pl .8s ease-in-out infinite;box-shadow:0 0 60px #46e3a0aa}
+.orb.thinking{animation:sp 1.2s linear infinite;filter:hue-rotate(40deg)}
+.orb.speaking{animation:pl .5s ease-in-out infinite;box-shadow:0 0 70px #35e6ffcc}
+@keyframes br{50%{transform:scale(1.06);opacity:.85}}
+@keyframes pl{50%{transform:scale(1.14)}}
+@keyframes sp{to{transform:rotate(360deg)}}
+#state{margin-top:8px;font-size:11px;letter-spacing:.3em;color:var(--mut);text-transform:uppercase}
+#partial{color:var(--cy);min-height:18px;margin-top:2px;text-align:center}
+.msg{max-width:88%;padding:9px 13px;margin:8px 0;border-radius:16px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.msg.user{margin-left:auto;background:#12314a;border-bottom-right-radius:4px}
+.msg.assistant{background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.err{border-color:#5b2530;color:#ff9aa5}
+.card{margin-top:8px;border:1px solid var(--cy2);border-radius:10px;padding:8px}
+.card button{margin:6px 6px 0 0}
+.btn{background:var(--cy);color:#00222b;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-size:14px}
+.btn.o{background:none;color:var(--tx);border:1px solid var(--line)}
+.btn:disabled{opacity:.45}
+#bar{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line);background:var(--panel)}
+#bar input{flex:1;min-width:0;background:#06101a;border:1px solid var(--line);border-radius:22px;color:var(--tx);padding:10px 14px;font-size:15px;outline:none}
+.rbtn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--tx);font-size:18px}
+.rbtn.go{background:var(--cy);color:#00222b;border:0}
+nav{display:flex;border-top:1px solid var(--line);background:var(--panel);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:11px 0;font-size:13px}
+nav button.on{color:var(--cy);font-weight:700}
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:2px 14px;margin:12px 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #0f2233}
+.row:last-child{border-bottom:0}
+.row b{display:block;font-weight:600}.row small{color:var(--mut);display:block;margin-top:2px;line-height:1.35}
+.sw{position:relative;width:46px;height:26px;flex:none}
+.sw input{opacity:0;position:absolute;inset:0;width:100%;height:100%;margin:0}
+.sw i{position:absolute;inset:0;border-radius:13px;background:#1b2f40;transition:.2s}
+.sw i:after{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#9fb7c8;transition:.2s}
+.sw input:checked+i{background:var(--cy2)}.sw input:checked+i:after{left:23px;background:#fff}
+.seg{display:flex;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--mut);padding:6px 11px;font-size:13px}.seg button.on{background:var(--cy);color:#00222b;font-weight:700}
+h2{font-size:12px;letter-spacing:.2em;color:var(--mut);margin:18px 2px 0}
+.ok{color:var(--ok);font-size:13px}
+input.txt{width:100%;background:#06101a;border:1px solid var(--line);border-radius:10px;color:var(--tx);padding:10px;font-size:14px;outline:none;margin-top:8px}
+#toast{position:fixed;left:50%;bottom:130px;transform:translateX(-50%);background:#12314a;border:1px solid var(--cy2);padding:9px 15px;border-radius:12px;max-width:86%;opacity:0;pointer-events:none;transition:.25s;z-index:9}
+#toast.on{opacity:1}
+#banner{background:#2a1f08;border:1px solid #7a5a12;color:#ffd98a;border-radius:12px;padding:10px 12px;margin:6px 0;display:none}
+ul{list-style:none;padding:0;margin:0}
+li.mem{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid #0f2233}
+</style>
+</head>
+<body>
+<header>
+  <h1>MXFF AI</h1>
+  <div>
+    <button class="ibtn" id="bStop" title="কথা থামান">🔇</button>
+    <button class="ibtn" id="bClear" title="চ্যাট মুছুন">🗑</button>
+    <button class="ibtn red" id="bEmerg" title="জরুরি থামা">⛔ থামাও</button>
+  </div>
+</header>
+
+<main>
+  <!-- CHAT -->
+  <section class="page on" id="p-chat">
+    <div id="banner">Gemini API কী দেওয়া নেই। <a href="#" id="goKey" style="color:#ffd98a">Settings-এ কী বসান</a> (ফ্রি)।</div>
+    <div id="orbwrap"><div class="orb" id="orb"></div><div id="state">READY</div><div id="partial"></div></div>
+    <div id="msgs"></div>
+  </section>
+
+  <!-- MEMORY -->
+  <section class="page" id="p-mem">
+    <h2>মেমরি: MXFF যা মনে রাখবে</h2>
+    <div style="display:flex;gap:8px;margin-top:10px"><input class="txt" id="memIn" style="margin:0" placeholder="যেমন: আমার নাম মইন। ছোট উত্তর দেবে।"><button class="btn" id="memAdd">সেভ</button></div>
+    <div class="sec"><ul id="memList"></ul></div>
+    <h2>সাম্প্রতিক নোটিফিকেশন</h2>
+    <div class="sec"><div class="row"><span><b>ফোনের নোটিফিকেশন পড়ুন</b><small>Settings-এ "Notification access" দিতে হবে। শুধু ফোনেই থাকে।</small></span><button class="btn o" id="notifBtn">পড়ুন</button></div><div id="notifList" style="padding-bottom:10px"></div></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="page" id="p-set">
+    <h2>AI (GEMINI)</h2>
+    <div class="sec">
+      <div class="row" style="display:block"><b>Gemini API কী</b><small>ফ্রি কী পেতে aistudio.google.com/apikey খুলে Create API key চাপুন। কীটা শুধু এই ফোনেই থাকে। অন্য কোনো সার্ভার লাগে না।</small>
+        <input class="txt" id="keyIn" type="password" placeholder="AIza..." autocomplete="off">
+        <div style="margin-top:8px"><button class="btn" id="keySave">সেভ ও টেস্ট</button> <span id="keyState" class="ok"></span></div></div>
+    </div>
+    <h2>সাধারণ</h2>
+    <div class="sec">
+      <div class="row"><b>ভাষা</b><div class="seg" id="seglang"><button data-v="bn">বাংলা</button><button data-v="en">English</button><button data-v="auto">Auto</button></div></div>
+      <div class="row"><span><b>ভয়েসে উত্তর</b></span><label class="sw"><input type="checkbox" id="swVoice"><i></i></label></div>
+      <div class="row"><span><b>লাগাতার কথোপকথন</b><small>উত্তরের পর আবার শোনে।</small></span><label class="sw"><input type="checkbox" id="swCont"><i></i></label></div>
+      <div class="row"><span><b>ফোনের কাজে স্ক্রিনশট দেখুক</b><small>ভিডিও ও ছবি বুঝতে সাহায্য করে। বন্ধ থাকলে শুধু স্ক্রিনের লেখা যাবে। কাজ না চললে কিছুই যায় না।</small></span><label class="sw"><input type="checkbox" id="swVision"><i></i></label></div>
+    </div>
+    <h2>ফ্লোটিং MXFF</h2>
+    <div class="sec">
+      <div class="row"><span><b>ফ্লোটিং অ্যাসিস্ট্যান্ট</b><small>সব অ্যাপের উপরে ছোট অর্ব। "Hey MXFF" বললে শোনে।</small></span><label class="sw"><input type="checkbox" id="swOverlay"><i></i></label></div>
+      <div class="row"><span><b>Hey MXFF (অ্যাপ খোলা থাকলে)</b></span><label class="sw"><input type="checkbox" id="swWake"><i></i></label></div>
+    </div>
+    <h2>অনুমতি</h2>
+    <div class="sec" id="perms"></div>
+    <p style="color:var(--mut);font-size:12px;line-height:1.5;margin:14px 2px 30px">ফোন কন্ট্রোল চালাতে: Android 13+ হলে আগে "App info → Allow restricted settings", তারপর "ফোন কন্ট্রোল (Accessibility)"-তে MXFF AI চালু করুন। মেসেজ পাঠানো, ইনস্টল ও পেমেন্টের আগে MXFF সবসময় আপনার অনুমতি নেয়।</p>
+  </section>
+</main>
+
+<form id="bar">
+  <input id="inp" placeholder="MXFF-কে কিছু বলুন…" autocomplete="off">
+  <button type="button" class="rbtn" id="bMic">🎤</button>
+  <button type="submit" class="rbtn go" id="bSend">➤</button>
+</form>
+<nav>
+  <button class="on" data-p="chat">চ্যাট</button>
+  <button data-p="mem">মেমরি</button>
+  <button data-p="set">সেটিংস</button>
+</nav>
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+var N=function(){return window.MXFFNative};
+var uid=function(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)};
+var LS={get:function(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+var S=Object.assign({language:"bn",voiceReply:true,continuous:false,screenVision:true},LS.get("mxff.settings",{}));
+var memory=LS.get("mxff.memory",[]);
+var chat=LS.get("mxff.chat",[]);
+var state="idle",busy=false,asks={};
+
+function saveS(){LS.set("mxff.settings",S);sync()}
+function saveM(){LS.set("mxff.memory",memory);sync()}
+function saveC(){LS.set("mxff.chat",chat.slice(-60))}
+function sync(){var b=N();if(b&&b.syncState)try{b.syncState(JSON.stringify({language:S.language,voiceReply:S.voiceReply,screenVision:S.screenVision,memory:memory.slice(0,30).map(function(m){return m.text})}))}catch(e){}}
+function toast(t){var e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(function(){e.classList.remove("on")},2800)}
+function lc(sample){return S.language==="en"?"en-US":S.language==="bn"?"bn-BD":(/[ঀ-৿]/.test(sample||"")?"bn-BD":"en-US")}
+
+// ---------- orb
+function setState(s){state=s;$("#orb").className="orb "+s;$("#state").textContent=({idle:"READY",listening:"LISTENING",thinking:"THINKING",speaking:"SPEAKING"})[s]||"READY"}
+
+// ---------- chat render
+var SENSITIVE={sms:1,call:1,whatsapp:1};
+function describe(a){
+  if(a.type==="sms")return "এসএমএস পাঠাব "+a.phone+": "+(a.text||"");
+  if(a.type==="call")return a.phone+" নম্বরে কল করব";
+  if(a.type==="whatsapp")return a.phone+" নম্বরের হোয়াটসঅ্যাপ চ্যাট খুলব";
+  if(a.type==="agent")return "ফোনে কাজ: "+(a.goal||"");
+  return a.type;
+}
+function render(){
+  var box=$("#msgs");box.textContent="";
+  chat.forEach(function(m){
+    var d=document.createElement("div");d.className="msg "+m.role+(m.err?" err":"");
+    d.appendChild(document.createTextNode(m.content));
+    if(m.pending){
+      var c=document.createElement("div");c.className="card";
+      var p=document.createElement("div");p.textContent=describe(m.pending);c.appendChild(p);
+      var y=document.createElement("button");y.className="btn";y.textContent="নিশ্চিত";
+      y.onclick=function(){var a=m.pending;m.pending=null;m.content+="\n✔ "+describe(a);saveC();render();runAction(a,true)};
+      var n=document.createElement("button");n.className="btn o";n.textContent="বাতিল";
+      n.onclick=function(){m.pending=null;m.content+="\n✖ বাতিল";saveC();render()};
+      c.appendChild(y);c.appendChild(n);d.appendChild(c);
+    }
+    box.appendChild(d);
+  });
+  var main=$("main");main.scrollTop=main.scrollHeight;
+}
+function add(role,content,extra){var m=Object.assign({id:uid(),role:role,content:content},extra||{});chat.push(m);saveC();render();return m}
+
+// ---------- actions
+function runAction(a,confirmed){
+  var b=N();if(!b){toast("এটা শুধু MXFF Android অ্যাপে চলে।");return}
+  var r;try{r=JSON.parse(b.action(JSON.stringify(Object.assign({},a,{confirmed:!!confirmed}))))}catch(e){toast("কাজটা চালানো গেল না");return}
+  if(!r.ok&&r.code==="not_installed"){
+    var n=a.name||"";
+    add("assistant",n+" অ্যাপটা ফোনে নেই। Play Store থেকে ইনস্টল করে খুলব?",{pending:{type:"agent",goal:n+" অ্যাপটা Play Store থেকে ইনস্টল করে খোলো"}});
+    return;
+  }
+  if(!r.ok)toast(r.message);
+}
+function extractAction(t){
+  var m=t.match(/\n?ACTION:\s*(\{[\s\S]*\})\s*$/);
+  if(!m)return{clean:t.trim(),action:null};
+  var a=null;try{a=JSON.parse(m[1])}catch(e){}
+  return{clean:t.slice(0,m.index).trim(),action:a};
+}
+
+// ---------- ask AI
+function send(text){
+  text=(text||"").trim();if(!text||busy)return;
+  $("#inp").value="";$("#partial").textContent="";
+  add("user",text);
+  var rem=text.match(/^(?:মনে রাখো|মনে রেখো|remember(?: that)?)[\s,:]+([\s\S]+)/i);
+  if(rem){memory.unshift({id:uid(),text:rem[1].trim()});saveM();var ok="মনে রাখলাম।";add("assistant",ok);say(ok);return}
+  var b=N();
+  if(!b){add("assistant","এটা শুধু MXFF Android অ্যাপে চলে।",{err:true});return}
+  if(!b.hasApiKey()){add("assistant","আগে Settings-এ Gemini API কী বসান (ফ্রি)।",{err:true});return}
+  busy=true;setState("thinking");
+  var hist=chat.filter(function(m){return !m.err}).slice(-16).map(function(m){return{role:m.role,content:m.content}});
+  var id=uid();
+  asks[id]=function(ok,t){
+    busy=false;setState("idle");
+    if(!ok){add("assistant",t,{err:true});return}
+    var x=extractAction(t);
+    var sens=x.action&&SENSITIVE[x.action.type];
+    if(x.clean||sens)add("assistant",x.clean||"নিশ্চিত করুন:",sens?{pending:x.action}:{});
+    if(x.action&&!sens)runAction(x.action,false);
+    if(x.clean)say(x.clean);
+  };
+  b.ask(id,JSON.stringify({messages:hist,language:S.language,memory:S.memoryOff?[]:memory.slice(0,30).map(function(m){return m.text})}));
+}
+function say(t){var b=N();if(!b||!S.voiceReply)return;try{b.speak(t.replace(/https?:\/\/\S+/g,""),lc(t))}catch(e){}}
+function listen(){var b=N();if(!b){toast("ভয়েস শুধু Android অ্যাপে");return}b.stopSpeaking();b.startListening(lc())}
+
+// ---------- native events
+window.MXFF_onNative=function(json){
+  var e;try{e=JSON.parse(json)}catch(x){return}
+  if(e.type==="ask_result"&&asks[e.id]){var f=asks[e.id];delete asks[e.id];f(e.ok,e.text)}
+  else if(e.type==="stt_partial")$("#partial").textContent=e.text;
+  else if(e.type==="stt_result"){$("#partial").textContent="";send(e.text)}
+  else if(e.type==="stt_state"){if(e.listening)setState("listening");else if(state==="listening")setState("idle")}
+  else if(e.type==="stt_error"){setState("idle");toast(e.message)}
+  else if(e.type==="tts_state"){if(e.speaking)setState("speaking");else{setState("idle");if(S.continuous&&!busy)listen()}}
+  else if(e.type==="wake")listen();
+  else if(e.type==="action_result")toast(e.message);
+  else if(e.type==="status")refresh();
+};
+
+// ---------- memory page
+function renderMem(){
+  var ul=$("#memList");ul.textContent="";
+  if(!memory.length){var p=document.createElement("div");p.style.cssText="padding:14px 0;color:#7f9db3";p.textContent="এখনো কিছু নেই। চ্যাটে বলুন: মনে রাখো ...";ul.appendChild(p);return}
+  memory.forEach(function(m){
+    var li=document.createElement("li");li.className="mem";
+    var s=document.createElement("span");s.textContent=m.text;
+    var d=document.createElement("button");d.className="ibtn";d.textContent="✕";
+    d.onclick=function(){memory=memory.filter(function(x){return x.id!==m.id});saveM();renderMem()};
+    li.appendChild(s);li.appendChild(d);ul.appendChild(li);
+  });
+}
+
+// ---------- settings page
+var PERMS=[["মাইক্রোফোন","micPermission","mic","ভয়েস ও Hey MXFF"],["অন্য অ্যাপের উপরে দেখানো","overlayPermission","overlay","ফ্লোটিং অর্ব"],["নোটিফিকেশন (Android 13+)","postNotifications","post_notifications","সার্ভিসের নোটিশ"],["ফোন কন্ট্রোল (Accessibility)","accessibilityOn","accessibility","অন্য অ্যাপে ট্যাপ, টাইপ, স্ক্রল। আগে App info দিন (নিচে)"],["SMS পাঠানো","smsPermission","sms","শুধু আপনি নিশ্চিত করলে"],["ফোন কল","callPermission","call","শুধু আপনি নিশ্চিত করলে"],["নোটিফিকেশন পড়া","notificationAccess","notification_access","চাইলে নোটিফিকেশন শোনায়"]];
+function refresh(){
+  var b=N();if(!b)return;
+  var st={};try{st=JSON.parse(b.getStatus())}catch(e){}
+  $("#banner").style.display=st.hasKey?"none":"block";
+  $("#keyState").textContent=st.hasKey?"✓ কী সেভ আছে":"";
+  $("#swOverlay").checked=!!st.overlayOn;$("#swWake").checked=!!st.wakeOn;
+  var box=$("#perms");box.textContent="";
+  PERMS.forEach(function(p){
+    var r=document.createElement("div");r.className="row";
+    var l=document.createElement("span");var t=document.createElement("b");t.textContent=p[0];var sm=document.createElement("small");sm.textContent=p[3];l.appendChild(t);l.appendChild(sm);r.appendChild(l);
+    if(st[p[1]]){var o=document.createElement("span");o.className="ok";o.textContent="✓ আছে";r.appendChild(o)}
+    else{var g=document.createElement("button");g.className="btn o";g.textContent="দিন";g.onclick=function(){b.requestPermission(p[2])};r.appendChild(g)}
+    box.appendChild(r);
+  });
+  if(!st.accessibilityOn){
+    var r=document.createElement("div");r.className="row";
+    r.innerHTML="<span><b>App info (একবার)</b><small>Android 13+: ⋮ → Allow restricted settings</small></span>";
+    var g=document.createElement("button");g.className="btn o";g.textContent="খুলুন";g.onclick=function(){b.requestPermission("app_info")};r.appendChild(g);box.appendChild(r);
+  }
+}
+function bindSettings(){
+  $("#swVoice").checked=S.voiceReply;$("#swCont").checked=S.continuous;$("#swVision").checked=S.screenVision;
+  $("#swVoice").onchange=function(){S.voiceReply=this.checked;saveS()};
+  $("#swCont").onchange=function(){S.continuous=this.checked;saveS()};
+  $("#swVision").onchange=function(){S.screenVision=this.checked;saveS()};
+  var seg=$("#seglang");
+  function paint(){Array.prototype.forEach.call(seg.children,function(x){x.classList.toggle("on",x.dataset.v===S.language)})}
+  Array.prototype.forEach.call(seg.children,function(x){x.onclick=function(){S.language=x.dataset.v;saveS();paint()}});paint();
+  $("#swOverlay").onchange=function(){var b=N();if(!b){this.checked=false;return toast("Android অ্যাপে চলবে")}var r=JSON.parse(b.setOverlay(this.checked));toast(r.message);setTimeout(refresh,500)};
+  $("#swWake").onchange=function(){var b=N();if(!b){this.checked=false;return toast("Android অ্যাপে চলবে")}var r=JSON.parse(b.setWake(this.checked,lc()));toast(r.message);setTimeout(refresh,500)};
+  $("#keySave").onclick=function(){
+    var b=N();if(!b)return toast("Android অ্যাপে চলবে");
+    var v=$("#keyIn").value.trim();if(v.length<20)return toast("কীটা ঠিকমতো পেস্ট করুন");
+    b.setApiKey(v);$("#keyIn").value="";toast("টেস্ট করছি…");
+    var id=uid();asks[id]=function(ok,t){toast(ok?"✓ কী ঠিক আছে। এখন কথা বলুন!":t);refresh()};
+    b.ask(id,JSON.stringify({messages:[{role:"user",content:"Reply with just: OK"}],language:"en",memory:[]}));
+  };
+}
+
+// ---------- wiring
+function page(p){
+  ["chat","mem","set"].forEach(function(x){$("#p-"+x).classList.toggle("on",x===p)});
+  Array.prototype.forEach.call(document.querySelectorAll("nav button"),function(b){b.classList.toggle("on",b.dataset.p===p)});
+  $("#bar").style.display=p==="chat"?"flex":"none";
+  if(p==="mem")renderMem();
+  if(p==="set")refresh();
+}
+Array.prototype.forEach.call(document.querySelectorAll("nav button"),function(b){b.onclick=function(){page(b.dataset.p)}});
+$("#goKey").onclick=function(e){e.preventDefault();page("set")};
+$("#bar").onsubmit=function(e){e.preventDefault();send($("#inp").value)};
+$("#bMic").onclick=listen;
+$("#bStop").onclick=function(){var b=N();if(b){b.stopSpeaking();b.stopListening()}setState("idle")};
+$("#bClear").onclick=function(){chat=[];saveC();render()};
+$("#bEmerg").onclick=function(){var b=N();if(b)b.emergencyStop();setState("idle");toast("সব কাজ থামানো হয়েছে")};
+$("#memAdd").onclick=function(){var v=$("#memIn").value.trim();if(!v)return;memory.unshift({id:uid(),text:v});$("#memIn").value="";saveM();renderMem()};
+$("#notifBtn").onclick=function(){
+  var b=N();if(!b)return toast("Android অ্যাপে চলবে");
+  var l=[];try{l=JSON.parse(b.getNotifications())}catch(e){}
+  var box=$("#notifList");box.textContent="";
+  if(!l.length){box.textContent="কোনো নোটিফিকেশন নেই (বা অনুমতি দেওয়া নেই)।";box.style.color="#7f9db3";return}
+  l.forEach(function(n){var p=document.createElement("p");p.style.margin="8px 0";p.textContent=n.app+" · "+n.title+": "+n.text;box.appendChild(p)});
+};
+
+bindSettings();render();setState("idle");sync();refresh();
+setInterval(function(){if($("#p-set").classList.contains("on")||$("#banner").style.display!=="none")refresh()},3000);
+if(N()&&!N().hasApiKey())$("#banner").style.display="block";
+if(!chat.length)add("assistant","আমি MXFF AI। ফ্লোটিং অর্ব চালু করে \"Hey MXFF\" বলুন, অথবা এখানে লিখুন।");
+})();
+</script>
+</body>
+</html>

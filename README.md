@@ -1,15 +1,29 @@
-# MXFF AI
+# Welcome to your Lovable project
 
-MXFF AI is a React/TanStack web assistant with an Android Kotlin companion. The Android shell exposes voice input/output, a floating holographic orb, wake phrase listening, app launching and selected phone actions through `window.MXFFNative`.
+This project was built with [Lovable](https://lovable.dev).
 
-## Quick start
+## Build with Lovable
 
-- Web app: install dependencies with `npm install`, then `npm run dev`.
-- Android: open the `android/` folder in Android Studio with JDK 17 and Android SDK Platform 34 installed.
-- Set `WEB_URL` in `android/app/build.gradle.kts` to the deployed web app URL. The deployed web app must provide `/api/mxff-ask` for the floating assistant's server-side AI requests.
+Open your project in the [Lovable editor](https://lovable.dev) and keep building.
 
-See `android/README-ANDROID.md` for build steps and `MXFF_FEATURE_AUDIT_BN.md` for a Bengali feature audit, limitations, privacy notes and setup checklist.
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
+- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
 
-## Important capability limits
+## Development
 
-The current source does not implement full screen capture/visual understanding or reliable in-app TikTok UI automation for browsing feeds, reading full DMs, or sending messages. Notification access only exposes notification previews. Android requires user confirmation for screen capture and app installation. Sensitive messaging/calling actions must remain confirmation-gated.
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+
+```sh
+git clone <this-repository-url>
+cd <repository-name>
+npm i
+npm run dev
+```
+
+## Built with
+
+- TanStack Start
+- TypeScript
+- React
+- Tailwind CSS

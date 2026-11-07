@@ -17,6 +17,7 @@ export type NativeStatus = {
   smsPermission: boolean;
   callPermission: boolean;
   notificationAccess: boolean;
+  accessibilityOn: boolean;
   postNotifications: boolean;
   overlayOn: boolean;
   wakeOn: boolean;
@@ -90,6 +91,7 @@ export function syncNativeState() {
       JSON.stringify({
         language: st.language ?? "bn",
         voiceReply: st.voiceReply ?? true,
+        screenVision: st.screenVision ?? true,
         memory: st.memoryEnabled === false ? [] : mem.slice(0, 30).map((m) => String(m.text ?? "")).filter(Boolean),
       }),
     );

@@ -107,6 +107,11 @@ function ChatPage() {
     const b = native.bridge();
     if (b) {
       const res = JSON.parse(b.action(JSON.stringify({ ...a, confirmed })));
+      if (!res.ok && res.code === "not_installed") {
+        const n = String(a.name ?? "");
+        push({ id: uid(), role: "assistant", content: `${n} is not installed. Install it from Play Store and open it?`, at: Date.now(), pending: { type: "agent", goal: `Install ${n} from Play Store and open it`, name: n } });
+        return "";
+      }
       if (!res.ok) toast.error(res.message);
       return "";
     }
