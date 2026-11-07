@@ -1,1 +1,5 @@
-<resources><string name="app_name">MXFF AI</string></resources>
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MXFF AI</string>
+    <string name="accessibility_description">MXFF AI Accessibility Service</string>
+</resources>
