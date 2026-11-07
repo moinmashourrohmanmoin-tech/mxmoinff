@@ -9,7 +9,6 @@ export type Settings = {
   wake: boolean;
   continuous: boolean;
   saveHistory: boolean;
-  screenVision: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -21,7 +20,6 @@ export const DEFAULT_SETTINGS: Settings = {
   wake: false,
   continuous: false,
   saveHistory: true,
-  screenVision: true,
 };
 
 export type ChatMsg = {
@@ -42,7 +40,6 @@ export type PendingAction = {
   url?: string | undefined;
   phone?: string | undefined;
   text?: string | undefined;
-  goal?: string | undefined;
   minutesFromNow?: number | undefined;
 };
 export type LogItem = { id: string; text: string; at: number };

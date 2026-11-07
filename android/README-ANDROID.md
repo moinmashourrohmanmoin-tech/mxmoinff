@@ -1,6 +1,6 @@
 # MXFF AI — Android app
 
-Native Kotlin app with a built-in screen (assets/www) and a direct Gemini brain (Brain.kt). It gives the UI phone powers
+Native Kotlin shell that loads the MXFF web app (https://mxff-ai1.lovable.app) and gives it phone powers
 through `window.MXFFNative` (see `NativeBridge.kt` and `src/lib/native.ts`).
 
 Features: Android voice input (Bengali/English), text-to-speech, open apps/URLs/camera/maps/settings,
@@ -26,9 +26,9 @@ Connect the project to GitHub from Lovable. The workflow `.github/workflows/andr
 push to `main`; download it from the run's Artifacts.
 
 ## Configuration
-- No web URL or server any more: the AI key is entered inside the app (Settings).
+- Web URL: `buildConfigField WEB_URL` in `app/build.gradle.kts`.
 - The release APK is signed with the debug key so it installs directly. For Play Store, create your own keystore.
-- The Gemini key is typed by the user in Settings and stored only on the phone.
+- The AI key lives on the server (Lovable Cloud / AI Gateway); no secret is stored in the app.
 
 ## First run on the phone
 Open Settings inside MXFF and grant: microphone, display over other apps, notification access, SMS and phone
@@ -37,8 +37,3 @@ Open Settings inside MXFF and grant: microphone, display over other apps, notifi
 
 ## Shadow mode
 See `../SHADOW-MODE.md`: floating shadow orb, "Hey MXFF" wake word, hologram reply, new voice actions.
-
-
-## Phone control (v1.1)
-Voice-operate any app (TikTok, WhatsApp, Play Store …). See `../PHONE-CONTROL.md` for setup (Accessibility service +
-"Allow restricted settings" on Android 13+) and the safety rules.

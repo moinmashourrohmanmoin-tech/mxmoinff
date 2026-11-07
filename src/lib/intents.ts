@@ -41,8 +41,6 @@ export function describeAction(a: PendingAction): string {
       return `Call ${a.phone}`;
     case "whatsapp":
       return `Open WhatsApp chat with ${a.phone}${a.text ? ` with message “${a.text}”` : ""}`;
-    case "agent":
-      return `Phone task: ${a.goal ?? ""}`;
     case "reminder":
       return `Set reminder “${a.text}” in ${a.minutesFromNow ?? 10} min`;
     default:

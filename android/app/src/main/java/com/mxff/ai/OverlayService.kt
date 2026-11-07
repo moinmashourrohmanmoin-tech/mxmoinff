@@ -36,9 +36,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 import java.util.concurrent.Executors
-import java.util.concurrent.SynchronousQueue
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 /**
  * "Shadow mode": a small dim orb floating over every app.
@@ -47,7 +44,7 @@ import java.util.concurrent.TimeUnit
  *  - Say nothing and it stays silent. Tap the orb to talk without the wake word, long-press it to put it to sleep.
  */
 class OverlayService : Service() {
-    private enum class Kind { WAKE, COMMAND, FOLLOWUP, CONFIRM, AGENT }
+    private enum class Kind { WAKE, COMMAND, FOLLOWUP, CONFIRM }
 
     private lateinit var wm: WindowManager
     private lateinit var view: ShadowView
@@ -72,14 +69,6 @@ class OverlayService : Service() {
     private var savedY = 300
     private var anim: ValueAnimator? = null
     private var mutedStreams = ArrayList<Int>()
-
-    // ---- phone-operating agent (see ScreenAgent) ----
-    @Volatile private var agentRunning = false
-    @Volatile private var agent: ScreenAgent? = null
-    @Volatile private var agentFromApp = false
-    @Volatile private var agentSpeakLatch: CountDownLatch? = null
-    private val agentAnswer = SynchronousQueue<String>()
-    private var pendingAgentGoal: String? = null
 
     private val afterSpeakRunnable = Runnable { afterSpeak() }
     private val wakeRunnable = Runnable { if (!busy && !appOpen && !asleep) listen(Kind.WAKE) }
@@ -115,7 +104,6 @@ class OverlayService : Service() {
     override fun onDestroy() {
         running = false
         instance = null
-        agent?.cancel()
         anim?.cancel()
         unmuteNow()
         main.removeCallbacksAndMessages(null)
@@ -226,10 +214,7 @@ class OverlayService : Service() {
     /** Called by MainActivity: the shadow hides and the mic is released while the app itself is on screen. */
     private fun applyAppOpen(open: Boolean) {
         appOpen = open
-        if (open && agentRunning && agentFromApp) return          // task started from the app: the app is just leaving
-        if (!open) agentFromApp = false
         if (open) {
-            agent?.cancel()
             main.removeCallbacks(afterSpeakRunnable); main.removeCallbacks(wakeRunnable)
             stopRecognizer(); tts?.stop(); pending = null; busy = false
             anim?.cancel(); hud = false
@@ -246,7 +231,6 @@ class OverlayService : Service() {
 
     private fun onTap() {
         when {
-            agentRunning -> agent?.cancel()   // tap the orb = stop the phone task
             asleep -> { asleep = false; startWake() }
             busy -> dismissHud()
             else -> { stopRecognizer(); main.removeCallbacks(wakeRunnable); listen(Kind.COMMAND) }
@@ -256,7 +240,6 @@ class OverlayService : Service() {
     private fun toggleSleep() {
         asleep = !asleep
         if (asleep) {
-            agent?.cancel()
             main.removeCallbacks(wakeRunnable); main.removeCallbacks(afterSpeakRunnable)
             stopRecognizer(); tts?.stop(); pending = null; busy = false
             hideHud(); view.mode = ShadowView.SLEEP
@@ -264,7 +247,6 @@ class OverlayService : Service() {
     }
 
     private fun dismissHud() {
-        if (agentRunning) { agent?.cancel(); return }
         main.removeCallbacks(afterSpeakRunnable)
         tts?.stop(); pending = null; busy = false
         hideHud(); startWake()
@@ -347,7 +329,6 @@ class OverlayService : Service() {
             }
             Kind.COMMAND, Kind.FOLLOWUP -> if (text.isBlank()) startWake() else handle(text)
             Kind.CONFIRM -> answerConfirm(text)
-            Kind.AGENT -> agentAnswer.offer(text)
         }
     }
 
@@ -361,7 +342,6 @@ class OverlayService : Service() {
                 else -> 800L
             })
             Kind.CONFIRM -> { pending = null; startWake() }
-            Kind.AGENT -> agentAnswer.offer("")
             else -> startWake()
         }
     }
@@ -395,10 +375,27 @@ class OverlayService : Service() {
     }
 
     private fun askServer(msgs: List<Pair<String, String>>): Pair<Boolean, String> {
-        val mem = ArrayList<String>()
-        try { val j = JSONArray(prefs.getString("memory", "[]")); for (i in 0 until j.length()) mem.add(j.optString(i)) } catch (e: Exception) { /* ignore */ }
-        val r = Brain.chat(applicationContext, msgs, prefs.getString("lang", "bn") ?: "bn", mem, voice = true)
-        return Pair(r.ok, r.text)
+        val offline = if (bn) "MXFF সার্ভারে পৌঁছাতে পারছি না। ইন্টারনেট দেখুন, আর ওয়েব অ্যাপ নতুন করে পাবলিশ করা আছে কিনা দেখুন।"
+        else "I can't reach the MXFF server. Check your internet and that the web app has been republished."
+        return try {
+            val con = URL(BuildConfig.WEB_URL.trimEnd('/') + "/api/mxff-ask").openConnection() as HttpURLConnection
+            con.requestMethod = "POST"
+            con.connectTimeout = 15000
+            con.readTimeout = 60000
+            con.doOutput = true
+            con.setRequestProperty("Content-Type", "application/json")
+            if (BuildConfig.APP_TOKEN.isNotEmpty()) con.setRequestProperty("x-mxff-token", BuildConfig.APP_TOKEN)
+            val mem = try { JSONArray(prefs.getString("memory", "[]")) } catch (e: Exception) { JSONArray() }
+            val body = JSONObject()
+                .put("messages", JSONArray().apply { msgs.forEach { put(JSONObject().put("role", it.first).put("content", it.second)) } })
+                .put("language", prefs.getString("lang", "bn"))
+                .put("memory", mem)
+            con.outputStream.use { it.write(body.toString().toByteArray()) }
+            val stream = if (con.responseCode in 200..299) con.inputStream else con.errorStream
+            val raw = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val j = JSONObject(raw)
+            if (j.optBoolean("ok")) Pair(true, j.getString("text")) else Pair(false, j.optString("error", offline))
+        } catch (e: Exception) { Pair(false, offline) }
     }
 
     private fun onReply(ok: Boolean, text: String) {
@@ -409,11 +406,6 @@ class OverlayService : Service() {
         val action = m?.let { try { JSONObject(it.groupValues[1]) } catch (e: Exception) { null } }
         history.add("assistant" to clean)
 
-        if (action != null && action.optString("type") == "agent") {
-            val goal = action.optString("goal").ifBlank { history.lastOrNull { it.first == "user" }?.second.orEmpty() }
-            if (clean.isBlank()) launchAgent(goal) else { pendingAgentGoal = goal; say(clean) }
-            return
-        }
         if (action != null && action.optString("type") in PhoneActions.SENSITIVE) {
             pending = action
             say(PhoneActions.describe(action, bn) + if (bn) "। নিশ্চিত? হ্যাঁ বা না বলুন।" else ". Sure? Say yes or no.")
@@ -422,20 +414,14 @@ class OverlayService : Service() {
         var spoken = clean
         if (action != null) {
             val r = PhoneActions.run(applicationContext, action)
-            if (!r.optBoolean("ok") && r.optString("code") == "not_installed") {
-                // App missing: the phone agent asks "install from Play Store?" and does it after a spoken yes.
-                val n = action.optString("name")
-                launchAgent(if (bn) "$n অ্যাপটা ইনস্টল করে খোলো" else "Install $n from Play Store and open it")
-                return
-            }
             if (!r.optBoolean("ok")) spoken = r.optString("message")
         }
         if (spoken.isBlank()) startWake() else say(spoken)
     }
 
     private fun answerConfirm(text: String) {
-        val yes = isYes(text)
-        val no = isNo(text)
+        val yes = Regex("\\b(?:yes|yeah|yep|sure|okay|ok|confirm|go ahead)\\b|হ্যাঁ|হ্যা|হাঁ|জি|ঠিক আছে|করো|পাঠাও", RegexOption.IGNORE_CASE).containsMatchIn(text)
+        val no = Regex("\\b(?:no|nope|cancel|don't|stop)\\b|না|থাক|বাদ", RegexOption.IGNORE_CASE).containsMatchIn(text)
         val a = pending
         pending = null
         busy = true
@@ -473,74 +459,12 @@ class OverlayService : Service() {
     }
 
     private fun afterSpeak() {
-        if (!busy) return
+        if (!busy || appOpen) return
         main.removeCallbacks(afterSpeakRunnable)
-        if (agentRunning) { hideHud(); agentSpeakLatch?.countDown(); return }   // the agent decides what happens next
-        if (appOpen) return
         hideHud()
-        pendingAgentGoal?.let { pendingAgentGoal = null; launchAgent(it); return }
         busy = false
         // Short follow-up window without the wake word; if you say nothing it drops back to the quiet shadow.
         if (pending != null) listen(Kind.CONFIRM) else listen(Kind.FOLLOWUP)
-    }
-
-    // ------------------------------------------------------------------ phone-operating agent
-
-    private fun isYes(text: String) = Regex("\\b(?:yes|yeah|yep|sure|okay|ok|confirm|go ahead)\\b|হ্যাঁ|হ্যা|হাঁ|জি|ঠিক আছে|করো|পাঠাও", RegexOption.IGNORE_CASE).containsMatchIn(text)
-    private fun isNo(text: String) = Regex("\\b(?:no|nope|cancel|don't|stop)\\b|না|থাক|বাদ", RegexOption.IGNORE_CASE).containsMatchIn(text)
-
-    /** Bridges ScreenAgent (background thread) to this service's voice: speak, ask, confirm. */
-    private val agentHost = object : ScreenAgent.Host {
-        private fun speakAndWait(t: String) {
-            if (t.isBlank()) return
-            val l = CountDownLatch(1)
-            agentSpeakLatch = l
-            main.post { this@OverlayService.say(t) }
-            l.await(25, TimeUnit.SECONDS)
-        }
-        override fun say(text: String) = speakAndWait(text)
-        override fun ask(question: String): String? {
-            speakAndWait(question)
-            agentAnswer.clear()
-            main.post { listen(Kind.AGENT) }
-            val r = agentAnswer.poll(30, TimeUnit.SECONDS)
-            main.post { stopRecognizer(); view.mode = ShadowView.THINKING }
-            return r
-        }
-        override fun confirm(question: String): Boolean {
-            val r = ask(question) ?: return false
-            return isYes(r) && !isNo(r)
-        }
-    }
-
-    private fun launchAgent(goal: String) {
-        if (goal.isBlank()) { startWake(); return }
-        if (!MxffAccessibilityService.ready) {
-            busy = true
-            say(if (bn) "এই কাজের জন্য ফোনের সেটিংস → অ্যাক্সেসিবিলিটি থেকে MXFF চালু করতে হবে। সেটিংস খুলে দিচ্ছি।" else "To do this, turn on MXFF in Settings → Accessibility. Opening it now.")
-            try { startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) { /* ignore */ }
-            return
-        }
-        busy = true
-        agentRunning = true
-        main.removeCallbacks(wakeRunnable); stopRecognizer()
-        view.mode = ShadowView.THINKING
-        val ag = ScreenAgent(applicationContext, agentHost, bn)
-        agent = ag
-        Thread {
-            val result = try { ag.run(goal) } catch (e: Exception) { if (bn) "কাজটা করতে গিয়ে সমস্যা হয়েছে।" else "Something went wrong while doing that." }
-            main.post {
-                agentRunning = false; agent = null; agentFromApp = false
-                history.add("assistant" to result)
-                if (!appOpen) say(result) else { busy = false }
-            }
-        }.also { it.isDaemon = true }.start()
-    }
-
-    private fun runAgentFromApp(goal: String) {
-        agentFromApp = true
-        MxffAccessibilityService.instance?.home()    // leave the MXFF app so the shadow and the target app are visible
-        main.postDelayed({ launchAgent(goal) }, 700)
     }
 
     // ------------------------------------------------------------------ recogniser start beep
@@ -569,13 +493,5 @@ class OverlayService : Service() {
 
         /** MainActivity tells the shadow when the app itself is on screen. */
         fun setAppOpen(open: Boolean) { instance?.let { s -> s.main.post { s.applyAppOpen(open) } } }
-
-        /** Start a phone-operating task (called from PhoneActions "agent"). */
-        fun runAgent(goal: String, fromApp: Boolean) {
-            instance?.let { s -> s.main.post { if (fromApp) s.runAgentFromApp(goal) else s.launchAgent(goal) } }
-        }
-
-        /** Emergency stop. */
-        fun cancelAgent() { instance?.agent?.cancel() }
     }
 }

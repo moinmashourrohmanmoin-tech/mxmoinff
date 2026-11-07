@@ -1,4 +1,1 @@
-<resources>
-    <string name="app_name">MXFF AI</string>
-    <string name="accessibility_description">MXFF AI আপনার বলা কাজ করার জন্য স্ক্রিন দেখে অন্য অ্যাপে ট্যাপ, স্ক্রল ও টাইপ করে। মেসেজ পাঠানো, ইনস্টল ও পেমেন্টের আগে সবসময় আপনার অনুমতি নেয়। / MXFF AI reads the screen and taps, scrolls and types in other apps to do what you ask. It always asks before sending messages, installing apps or paying.</string>
-</resources>
+<resources><string name="app_name">MXFF AI</string></resources>
