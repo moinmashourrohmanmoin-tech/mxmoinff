@@ -1,0 +1,101 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: "Orbitron", ui-sans-serif, system-ui;
+  --font-sans: "Rajdhani", "Hind Siliguri", ui-sans-serif, system-ui;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-glow: var(--glow);
+  --color-success: var(--success);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.13 0.03 255);
+  --foreground: oklch(0.94 0.03 220);
+  --card: oklch(0.18 0.04 255 / 0.7);
+  --card-foreground: oklch(0.94 0.03 220);
+  --popover: oklch(0.17 0.04 255);
+  --popover-foreground: oklch(0.94 0.03 220);
+  --primary: oklch(0.8 0.15 210);
+  --primary-foreground: oklch(0.13 0.03 255);
+  --secondary: oklch(0.24 0.05 250);
+  --secondary-foreground: oklch(0.9 0.04 215);
+  --muted: oklch(0.22 0.04 252);
+  --muted-foreground: oklch(0.68 0.05 225);
+  --accent: oklch(0.6 0.18 240);
+  --accent-foreground: oklch(0.97 0.02 220);
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.97 0.02 220);
+  --success: oklch(0.78 0.16 160);
+  --border: oklch(0.8 0.15 210 / 0.18);
+  --input: oklch(0.8 0.15 210 / 0.22);
+  --ring: oklch(0.8 0.15 210);
+  --glow: oklch(0.82 0.16 205);
+  --gradient-bg: radial-gradient(ellipse at 50% 0%, oklch(0.25 0.09 245) 0%, oklch(0.13 0.03 255) 55%, oklch(0.08 0.02 260) 100%);
+  --shadow-glow: 0 0 24px oklch(0.8 0.15 210 / 0.35);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background: var(--gradient-bg) fixed;
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+  }
+}
+
+@utility glass {
+  background: var(--card);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+}
+@utility glow {
+  box-shadow: var(--shadow-glow);
+}
+@utility font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+}
+
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@keyframes spin-rev { to { transform: rotate(-360deg); } }
+@keyframes pulse-core { 0%,100% { transform: scale(1); opacity: .9 } 50% { transform: scale(1.08); opacity: 1 } }
+@keyframes wave { 0%,100% { transform: scaleY(.25) } 50% { transform: scaleY(1) } }
+.orb-ring-a { animation: spin-slow 9s linear infinite; }
+.orb-ring-b { animation: spin-rev 6s linear infinite; }
+.orb-ring-c { animation: spin-slow 3.5s linear infinite; }
+.orb-core { animation: pulse-core 2.6s ease-in-out infinite; }
+[data-state="thinking"] .orb-ring-a { animation-duration: 2.5s; }
+[data-state="thinking"] .orb-ring-b { animation-duration: 1.6s; }
+[data-state="listening"] .orb-core { animation-duration: .9s; }
+.wave-bar { animation: wave 1s ease-in-out infinite; transform-origin: center; }
